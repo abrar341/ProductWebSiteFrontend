@@ -1,11 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { getProducts, deleteProduct } from "../api/crudApi";
 import { MdDelete } from "react-icons/md";
+import { AiOutlineClose } from "react-icons/ai"; // for close icon
 
 const ProductListPage = ({ products, setProducts, isAdmin }) => {
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortOrder, setSortOrder] = useState("none"); // new
+    const [sortOrder, setSortOrder] = useState("none");
+    const [selectedProduct, setSelectedProduct] = useState(null); // 🌟 Modal state
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -14,7 +16,6 @@ const ProductListPage = ({ products, setProducts, isAdmin }) => {
                 setProducts(productsList.products);
             }
         };
-
         fetchProducts();
     }, [setProducts]);
 
@@ -32,11 +33,8 @@ const ProductListPage = ({ products, setProducts, isAdmin }) => {
 
     const filteredProducts = useMemo(() => {
         let filtered = products.filter((product) => {
-            const matchCategory =
-                categoryFilter === "all" || product.category === categoryFilter;
-            const matchSearch = product.name
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase());
+            const matchCategory = categoryFilter === "all" || product.category === categoryFilter;
+            const matchSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
             return matchCategory && matchSearch;
         });
 
@@ -53,7 +51,7 @@ const ProductListPage = ({ products, setProducts, isAdmin }) => {
         <div className="p-4 text-white">
             <h1 className="text-xl font-bold mb-4">Product List</h1>
 
-            {/* Filter Controls */}
+            {/* Filters */}
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                 <select
                     value={categoryFilter}
@@ -86,12 +84,17 @@ const ProductListPage = ({ products, setProducts, isAdmin }) => {
                 </select>
             </div>
 
+            {/* Product Grid */}
             {filteredProducts.length === 0 ? (
                 <div>No products to show</div>
             ) : (
                 <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredProducts.map((product, index) => (
-                        <li key={index} className="border p-4 rounded shadow">
+                        <li
+                            key={index}
+                            className="border p-4 rounded shadow cursor-pointer hover:bg-blue-900 transition"
+                            onClick={() => setSelectedProduct(product)} // 👈 Open Modal
+                        >
                             {product.image && (
                                 <img
                                     src={product.image}
@@ -104,7 +107,10 @@ const ProductListPage = ({ products, setProducts, isAdmin }) => {
                             <p className="text-green-600 font-medium">Price: {product.price}</p>
                             {isAdmin && (
                                 <button
-                                    onClick={() => handleDelete(product._id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // prevent modal open
+                                        handleDelete(product._id);
+                                    }}
                                     className="w-full flex items-center justify-end mt-2 hover:text-red-500 transition"
                                 >
                                     <MdDelete className="text-2xl" />
@@ -113,7 +119,30 @@ const ProductListPage = ({ products, setProducts, isAdmin }) => {
                         </li>
                     ))}
                 </ul>
+            )}
 
+            {/* Modal */}
+            {selectedProduct && (
+                <div className="fixed text-white inset-0 bg-black bg-primary flex items-center justify-center z-50">
+                    <div className="bg-blue-600 text-black rounded-lg p-6 w-11/12 max-w-md relative">
+                        <button
+                            onClick={() => setSelectedProduct(null)}
+                            className="absolute top-1 right-1 text-gray-200 hover:text-black"
+                        >
+                            <AiOutlineClose className="text-xl" />
+                        </button>
+                        {selectedProduct.image && (
+                            <img
+                                src={selectedProduct.image}
+                                alt={selectedProduct.name}
+                                className="w-full h-60 object-cover rounded-xl mb-4"
+                            />
+                        )}
+                        <h2 className="text-xl text-gray-200 font-bold">{selectedProduct.name}</h2>
+                        <p className="text-gray-200">Category: {selectedProduct.category}</p>
+                        <p className="text-green-200 font-semibold">Price: {selectedProduct.price}</p>
+                    </div>
+                </div>
             )}
         </div>
     );
